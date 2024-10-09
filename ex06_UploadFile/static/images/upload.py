@@ -1,18 +1,21 @@
 from fastapi import APIRouter
-from fastapi import File, UploadFile, HTTPException
+from fastapi import File, UploadFile, HTTPException, Request
 from fastapi.responses import FileResponse
+from fastapi.templating import Jinja2Templates
 from pathlib import Path
 import shutil
 from ocr_test import detect_license_plate
 
 upload_router = APIRouter()
 
+templates = Jinja2Templates(directory="templates")
+
 @upload_router.get("/upload/")
 async def upload_page():
     return FileResponse("templates/upload_page.html", media_type="text/html")
 
 @upload_router.post("/upload/")
-async def upload_file(file: UploadFile = File(...)):
+async def upload_file(request: Request, file: UploadFile = File(...)):
     """
     file: 함수의 매개변수로 클라이언트로부터 전송된 파일을 받음.
     UploadFile: FastAPI에서 제공하는 클래스로 업로드된 파일의 정보와 내용을 담고 있다.
@@ -30,11 +33,15 @@ async def upload_file(file: UploadFile = File(...)):
         shutil.copyfileobj(file.file, buffer)
 
     file_path = Path("uploaded_files") / file.filename
-    detect_license_plate(file_path)
+    license_plates = detect_license_plate(file_path)
 
-    # 처리된 이미지 파일 반환
-    return FileResponse("detected_image.jpg")
-    # return {"filename": file.filename}  # 파일이 성공적으로 업로드되면, 업로드된 파일의 이름을 JSON 형태로 응답으로 반환
+    # template에 전달하려는 데이터 (예: title)
+    data = {"title": "Welcome to FastAPI", "license_numbers": license_plates}
+    return templates.TemplateResponse("show_image.html", {"request": request, **data})
+
+    # # 처리된 이미지 파일 반환
+    # return FileResponse("detected_image.jpg")
+    # # return {"filename": file.filename}  # 파일이 성공적으로 업로드되면, 업로드된 파일의 이름을 JSON 형태로 응답으로 반환
 
 @upload_router.post("/detect_license/")
 async def detect_plate():
@@ -43,8 +50,11 @@ async def detect_plate():
     if not file_path.exists() or not file_path.is_file():
         return {"error": "Image not found"}
 
-    detect_license_plate(file_path)
+    license_plates = detect_license_plate(file_path)
+
+    # template에 전달하려는 데이터 (예: title)
+    data = {"title": "Welcome to FastAPI", "license_numbers": license_plates}
+    return templates.TemplateResponse("index.html", {"request": request, **data})
 
     # 처리된 이미지 파일 반환
-    return FileResponse("detected_image.jpg")
-
+    # return FileResponse("detected_image.jpg")
