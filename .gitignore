@@ -38,3 +38,5 @@ archive.zip
 /Lib/site-packages/click-8.1.7.dist-info
 /Lib
 /Lib
+/share
+/Scripts
